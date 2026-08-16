@@ -1,18 +1,24 @@
--- Made by m7za (my discord is m7za1)
-
--- sorry for ass gui fps
-
--- no sun, no garou color, optimized ult, no tree, and full optimized system
+---------------------------------------------------------------------
+-- Made By m7za ( My Discord is m7za1 ) --------------------------------
+------------------------------------------------------------------------
+-- Sorry For Ass GUI ---------------------------------------------------
+------------------------------------------------------------------------
+-- No Sun, No Garou Color, FPS + PING counter, Fully Optimized System. -
+------------------------------------------------------------------------
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local Stats = game:GetService("Stats")
+
 local lp = Players.LocalPlayer
 local Terrain = Workspace:FindFirstChildOfClass("Terrain")
 
 local fpsGui, fpsLabel, fpsCorner
+local dragging, dragInput, dragStart, startPos
 local Optimizer
 local VM = {}
 local order = {1, 2, 3, 4, 5, 6, 7}
@@ -21,10 +27,24 @@ local function safeConnect(sig, fn)
     pcall(function() sig:Connect(fn) end)
 end
 
+local function processDescendantsChunked(parent, callback, chunkSize)
+    chunkSize = chunkSize or 250
+    task.spawn(function()
+        local count = 0
+        for _, v in ipairs(parent:GetDescendants()) do
+            pcall(callback, v)
+            count = count + 1
+            if count % chunkSize == 0 then
+                task.wait()
+            end
+        end
+    end)
+end
+
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification",{
-        Title="made by m7za",
-        Text="my discord m7za1",
+        Title="Made By m7za",
+        Text="My Discord is m7za1",
         Duration=5
     })
 end)
@@ -46,12 +66,12 @@ VM[1] = function()
     end
 
     local function hookChar(char)
-        for _,v in ipairs(char:GetDescendants()) do
+        processDescendantsChunked(char, function(v)
             if v:IsA("Trail") or v:IsA("ParticleEmitter") then
                 apply(v)
             end
-        end
-        safeConnect(char.DescendantAdded,function(v)
+        end)
+        safeConnect(char.DescendantAdded, function(v)
             if v:IsA("Trail") or v:IsA("ParticleEmitter") then
                 apply(v)
             end
@@ -59,7 +79,7 @@ VM[1] = function()
     end
 
     if lp.Character then hookChar(lp.Character) end
-    safeConnect(lp.CharacterAdded,hookChar)
+    safeConnect(lp.CharacterAdded, hookChar)
 end
 
 VM[2] = function()
@@ -93,18 +113,7 @@ VM[3] = function()
     end
 end
 
-VM[4] = function()
-    safeConnect(Workspace.DescendantAdded,function(v)
-        if v:IsA("Smoke") then
-            v:Destroy()
-        elseif v:IsA("ParticleEmitter") then
-            local m=v:FindFirstAncestorOfClass("Model")
-            if not (m and m:FindFirstChild("Class") and m.Class.Value=="Hero Hunter") then
-                v:Destroy()
-            end
-        end
-    end)
-end
+VM[4] = function() end
 
 VM[5] = function()
     if not Terrain then return end
@@ -149,30 +158,40 @@ VM[6] = function()
 end
 
 VM[7] = function()
-    local function removeTree(v)
-        local name = v.Name:lower()
-        if (v:IsA("Model") or v:IsA("BasePart")) and (name:find("tree") or name:find("leaf") or name:find("foliage")) then
-            v:Destroy()
+    processDescendantsChunked(Workspace, function(v)
+        if v:IsA("Model") or v:IsA("BasePart") then
+            local name = v.Name:lower()
+            if name:find("tree") or name:find("leaf") or name:find("foliage") then
+                v:Destroy()
+            end
         end
-    end
-
-    for _, v in ipairs(Workspace:GetDescendants()) do
-        pcall(removeTree, v)
-    end
-
-    safeConnect(Workspace.DescendantAdded, function(v)
-        removeTree(v)
     end)
 end
 
-while #order>0 do
-    local i=math.random(#order)
+safeConnect(Workspace.DescendantAdded, function(v)
+    if v:IsA("Smoke") then
+        v:Destroy()
+    elseif v:IsA("ParticleEmitter") then
+        local m = v:FindFirstAncestorOfClass("Model")
+        if not (m and m:FindFirstChild("Class") and m.Class.Value == "Hero Hunter") then
+            v:Destroy()
+        end
+    elseif v:IsA("Model") or v:IsA("BasePart") then
+        local name = v.Name:lower()
+        if name:find("tree") or name:find("leaf") or name:find("foliage") then
+            v:Destroy()
+        end
+    end
+end)
+
+while #order > 0 do
+    local i = math.random(#order)
     pcall(VM[order[i]])
-    table.remove(order,i)
+    table.remove(order, i)
 end
 
 pcall(function()
-    settings().Rendering.QualityLevel=Enum.QualityLevel.Level01
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 end)
 
 getgenv().Optimizer = {
@@ -200,47 +219,50 @@ function Optimizer.LowGraphicsMode(enable)
         Terrain.WaterReflectance = enable and 0 or 1
         Terrain.WaterTransparency = enable and 0 or 1
     end
-    for _, v in ipairs(Workspace:GetDescendants()) do
+    
+    processDescendantsChunked(Workspace, function(v)
         if v:IsA("BasePart") and not v:IsDescendantOf(lp.Character or Workspace) then
             if enable then v.Material = Enum.Material.SmoothPlastic end
         end
-    end
+    end)
 end
 
 function Optimizer.EffectCleaner()
     local count = 0
-    for _, v in ipairs(Workspace:GetDescendants()) do
+    processDescendantsChunked(Workspace, function(v)
         if v:IsA("Explosion") or v:IsA("Debris") or v.Name:lower():find("effect") or v.Name:lower():find("debris") then
             v:Destroy()
             count = count + 1
         end
-    end
+    end)
     return count
 end
 
 function Optimizer.ParticleOptimizer(enable)
-    for _, v in ipairs(Workspace:GetDescendants()) do
+    processDescendantsChunked(Workspace, function(v)
         if v:IsA("ParticleEmitter") or v:IsA("Sparkles") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Trail") or v:IsA("Beam") then
             if Optimizer.Originals.Particles[v] == nil then
                 Optimizer.Originals.Particles[v] = v.Enabled
             end
             v.Enabled = not enable and Optimizer.Originals.Particles[v] or false
         end
-    end
+    end)
 end
 
 function Optimizer.CharacterOptimizer(enable)
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character then
-            for _, item in ipairs(player.Character:GetDescendants()) do
-                if item:IsA("Accessory") or item:IsA("ShirtGraphic") or item:IsA("Clothing") then
-                    item.Parent = enable and nil or player.Character
-                elseif item:IsA("BasePart") then
-                    item.CastShadow = not enable
+    task.spawn(function()
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character then
+                for _, item in ipairs(player.Character:GetDescendants()) do
+                    if item:IsA("Accessory") or item:IsA("ShirtGraphic") or item:IsA("Clothing") then
+                        item.Parent = enable and nil or player.Character
+                    elseif item:IsA("BasePart") then
+                        item.CastShadow = not enable
+                    end
                 end
             end
         end
-    end
+    end)
 end
 
 function Optimizer.DisableFog(enable)
@@ -279,18 +301,51 @@ function Optimizer.FPSMonitor(enable)
             if not fpsGui.Parent then fpsGui.Parent = lp:WaitForChild("PlayerGui") end
             
             fpsLabel = Instance.new("TextLabel")
-            fpsLabel.Size = UDim2.new(0, 100, 0, 30)
-            fpsLabel.Position = UDim2.new(1, -110, 0, 10)
+            fpsLabel.Size = UDim2.new(0, 160, 0, 30)
+            fpsLabel.Position = UDim2.new(1, -170, 0, 10)
             fpsLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
             fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
             fpsLabel.BackgroundTransparency = 0.3
             fpsLabel.Font = Enum.Font.SourceSansBold
-            fpsLabel.TextSize = 16
+            fpsLabel.TextSize = 15
+            fpsLabel.Active = true
             fpsLabel.Parent = fpsGui
 
             fpsCorner = Instance.new("UICorner")
             fpsCorner.CornerRadius = UDim.new(0, 8)
             fpsCorner.Parent = fpsLabel
+
+            safeConnect(fpsLabel.InputBegan, function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                    dragStart = input.Position
+                    startPos = fpsLabel.Position
+
+                    safeConnect(input.Changed, function()
+                        if input.UserInputState == Enum.UserInputState.End then
+                            dragging = false
+                        end
+                    end)
+                end
+            end)
+
+            safeConnect(fpsLabel.InputChanged, function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                    dragInput = input
+                end
+            end)
+
+            safeConnect(UserInputService.InputChanged, function(input)
+                if input == dragInput and dragging then
+                    local delta = input.Position - dragStart
+                    fpsLabel.Position = UDim2.new(
+                        startPos.X.Scale,
+                        startPos.X.Offset + delta.X,
+                        startPos.Y.Scale,
+                        startPos.Y.Offset + delta.Y
+                    )
+                end
+            end)
         end
         fpsGui.Enabled = true
         local frames, last = 0, os.clock()
@@ -298,7 +353,12 @@ function Optimizer.FPSMonitor(enable)
             frames = frames + 1
             local now = os.clock()
             if now - last >= 1 then
-                fpsLabel.Text = "FPS: " .. math.floor(frames / (now - last))
+                local currentFps = math.floor(frames / (now - last))
+                local ping = 0
+                pcall(function()
+                    ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+                end)
+                fpsLabel.Text = "FPS: " .. currentFps .. " | Ping: " .. ping .. "ms"
                 frames = 0
                 last = now
             end
@@ -311,12 +371,12 @@ end
 
 function Optimizer.SmartCleanup()
     local count = Optimizer.EffectCleaner()
-    for _, sound in ipairs(Workspace:GetDescendants()) do
+    processDescendantsChunked(Workspace, function(sound)
         if sound:IsA("Sound") and not sound.IsPlaying then
             sound:Destroy()
             count = count + 1
         end
-    end
+    end)
     return count
 end
 
@@ -327,7 +387,7 @@ function Optimizer.AutoOptimize(enable, targetFps)
         Optimizer.Connections["Auto"] = RunService.RenderStepped:Connect(function()
             frames = frames + 1
             local now = os.clock()
-            if now - last >= 2 then
+            if now - last >= 5 then
                 local current = math.floor(frames / (now - last))
                 if current < Optimizer.State.TargetFPS then
                     Optimizer.SmartCleanup()
