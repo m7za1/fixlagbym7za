@@ -12,16 +12,12 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local Stats = game:GetService("Stats")
 
 local lp = Players.LocalPlayer
 local Terrain = Workspace:FindFirstChildOfClass("Terrain")
 
-local fpsGui, fpsLabel, fpsCorner
-local dragging, dragInput, dragStart, startPos
-local Optimizer
 local VM = {}
-local order = {1, 2, 3, 4, 5, 6, 7}
+local order = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
 
 local function safeConnect(sig, fn)
     pcall(function() sig:Connect(fn) end)
@@ -43,8 +39,8 @@ end
 
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification",{
-        Title="Made By m7za",
-        Text="My Discord is m7za1",
+        Title="made by m7za",
+        Text="my discord m7za1",
         Duration=5
     })
 end)
@@ -113,7 +109,25 @@ VM[3] = function()
     end
 end
 
-VM[4] = function() end
+VM[4] = function()
+    safeConnect(Workspace.DescendantAdded, function(v)
+        if v:IsA("Smoke") then
+            v:Destroy()
+        elseif v:IsA("ParticleEmitter") then
+            local m = v:FindFirstAncestorOfClass("Model")
+            if not (m and m:FindFirstChild("Class") and m.Class.Value == "Hero Hunter") then
+                v:Destroy()
+            end
+        elseif v:IsA("Model") or v:IsA("BasePart") then
+            local name = v.Name:lower()
+            if name:find("tree") or name:find("leaf") or name:find("foliage") then
+                v:Destroy()
+            end
+        elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") then
+            v:Destroy()
+        end
+    end)
+end
 
 VM[5] = function()
     if not Terrain then return end
@@ -168,21 +182,147 @@ VM[7] = function()
     end)
 end
 
-safeConnect(Workspace.DescendantAdded, function(v)
-    if v:IsA("Smoke") then
-        v:Destroy()
-    elseif v:IsA("ParticleEmitter") then
-        local m = v:FindFirstAncestorOfClass("Model")
-        if not (m and m:FindFirstChild("Class") and m.Class.Value == "Hero Hunter") then
+VM[8] = function()
+    processDescendantsChunked(Workspace, function(v)
+        if v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") then
             v:Destroy()
         end
-    elseif v:IsA("Model") or v:IsA("BasePart") then
-        local name = v.Name:lower()
-        if name:find("tree") or name:find("leaf") or name:find("foliage") then
-            v:Destroy()
+    end)
+end
+
+VM[9] = function()
+    processDescendantsChunked(Workspace, function(v)
+        if v:IsA("BasePart") then
+            v.CastShadow = false
         end
+    end)
+end
+
+VM[10] = function()
+    local cam = Workspace.CurrentCamera
+    if cam then
+        safeConnect(cam:GetPropertyChangedSignal("FieldOfView"), function()
+            if cam.FieldOfView > 80 or cam.FieldOfView < 60 then
+                cam.FieldOfView = 70
+            end
+        end)
     end
-end)
+end
+
+VM[11] = function()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "FPSPingCounter"
+    screenGui.ResetOnSpawn = false
+    pcall(function() screenGui.Parent = CoreGui end)
+    if not screenGui.Parent then screenGui.Parent = lp:WaitForChild("PlayerGui") end
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 130, 0, 30)
+    mainFrame.Position = UDim2.new(0.8, 0, 0, 50)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    mainFrame.BackgroundTransparency = 0.7
+    mainFrame.BorderSizePixel = 1
+    mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
+    mainFrame.Parent = screenGui
+    mainFrame.Active = true
+    mainFrame.ClipsDescendants = true
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = mainFrame
+
+    local fpsLabel = Instance.new("TextLabel")
+    fpsLabel.Size = UDim2.new(0.5, -5, 1, -10)
+    fpsLabel.Position = UDim2.new(0, 5, 0, 5)
+    fpsLabel.BackgroundTransparency = 1
+    fpsLabel.Text = "FPS: 0"
+    fpsLabel.TextColor3 = Color3.new(1, 1, 1)
+    fpsLabel.Font = Enum.Font.Code
+    fpsLabel.TextSize = 15
+    fpsLabel.TextXAlignment = Enum.TextXAlignment.Left
+    fpsLabel.Parent = mainFrame
+
+    local pingLabel = Instance.new("TextLabel")
+    pingLabel.Size = UDim2.new(0.5, -5, 1, -10)
+    pingLabel.Position = UDim2.new(0.5, 5, 0, 5)
+    pingLabel.BackgroundTransparency = 1
+    pingLabel.Text = "PING: 0"
+    pingLabel.TextColor3 = Color3.new(1, 1, 1)
+    pingLabel.Font = Enum.Font.Code
+    pingLabel.TextSize = 15
+    pingLabel.TextXAlignment = Enum.TextXAlignment.Right
+    pingLabel.Parent = mainFrame
+
+    local dragging = false
+    local dragInput, mousePos, framePos
+
+    local function updateDrag(input)
+        local delta = input.Position - mousePos
+        mainFrame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+    end
+
+    safeConnect(mainFrame.InputBegan, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            mousePos = input.Position
+            framePos = mainFrame.Position
+            safeConnect(input.Changed, function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    safeConnect(mainFrame.InputChanged, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    safeConnect(UserInputService.InputChanged, function(input)
+        if input == dragInput and dragging then
+            updateDrag(input)
+        end
+    end)
+
+    local displayedFPS = 0
+    local displayedPing = 0
+    local lastTime = tick()
+
+    RunService.RenderStepped:Connect(function()
+        local currentTime = tick()
+        local fps = 1 / math.max(currentTime - lastTime, 0.0001)
+        lastTime = currentTime
+        
+        local ping = 0
+        pcall(function()
+            ping = lp:GetNetworkPing() * 1000
+        end)
+
+        displayedFPS = displayedFPS + (fps - displayedFPS) * 0.1
+        displayedPing = displayedPing + (ping - displayedPing) * 0.1
+
+        fpsLabel.Text = string.format("FPS: %d", math.floor(displayedFPS))
+        pingLabel.Text = string.format("PING: %d", math.floor(displayedPing))
+
+        if displayedFPS <= 25 then
+            fpsLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+        elseif displayedFPS <= 40 then
+            fpsLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+        else
+            fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        end
+
+        if displayedPing <= 150 then
+            pingLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        elseif displayedPing <= 250 then
+            pingLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+        else
+            pingLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+        end
+    end)
+end
 
 while #order > 0 do
     local i = math.random(#order)
@@ -193,261 +333,3 @@ end
 pcall(function()
     settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 end)
-
-getgenv().Optimizer = {
-    Originals = {
-        Lighting = {
-            GlobalShadows = Lighting.GlobalShadows,
-            FogEnd = Lighting.FogEnd,
-            FogStart = Lighting.FogStart
-        },
-        Effects = {},
-        Particles = {}
-    },
-    Connections = {},
-    State = {
-        TargetFPS = 30
-    }
-}
-
-Optimizer = getgenv().Optimizer
-
-function Optimizer.LowGraphicsMode(enable)
-    if Terrain then
-        Terrain.WaterWaveSize = enable and 0 or 0.15
-        Terrain.WaterWaveSpeed = enable and 0 or 10
-        Terrain.WaterReflectance = enable and 0 or 1
-        Terrain.WaterTransparency = enable and 0 or 1
-    end
-    
-    processDescendantsChunked(Workspace, function(v)
-        if v:IsA("BasePart") and not v:IsDescendantOf(lp.Character or Workspace) then
-            if enable then v.Material = Enum.Material.SmoothPlastic end
-        end
-    end)
-end
-
-function Optimizer.EffectCleaner()
-    local count = 0
-    processDescendantsChunked(Workspace, function(v)
-        if v:IsA("Explosion") or v:IsA("Debris") or v.Name:lower():find("effect") or v.Name:lower():find("debris") then
-            v:Destroy()
-            count = count + 1
-        end
-    end)
-    return count
-end
-
-function Optimizer.ParticleOptimizer(enable)
-    processDescendantsChunked(Workspace, function(v)
-        if v:IsA("ParticleEmitter") or v:IsA("Sparkles") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Trail") or v:IsA("Beam") then
-            if Optimizer.Originals.Particles[v] == nil then
-                Optimizer.Originals.Particles[v] = v.Enabled
-            end
-            v.Enabled = not enable and Optimizer.Originals.Particles[v] or false
-        end
-    end)
-end
-
-function Optimizer.CharacterOptimizer(enable)
-    task.spawn(function()
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player.Character then
-                for _, item in ipairs(player.Character:GetDescendants()) do
-                    if item:IsA("Accessory") or item:IsA("ShirtGraphic") or item:IsA("Clothing") then
-                        item.Parent = enable and nil or player.Character
-                    elseif item:IsA("BasePart") then
-                        item.CastShadow = not enable
-                    end
-                end
-            end
-        end
-    end)
-end
-
-function Optimizer.DisableFog(enable)
-    if enable then
-        Lighting.FogEnd = 1e6
-        Lighting.FogStart = 0
-    else
-        Lighting.FogEnd = Optimizer.Originals.Lighting.FogEnd
-        Lighting.FogStart = Optimizer.Originals.Lighting.FogStart
-    end
-    for _, v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("Atmosphere") then
-            v.Parent = enable and nil or Lighting
-        end
-    end
-end
-
-function Optimizer.LightingOptimizer(enable)
-    Lighting.GlobalShadows = not enable and Optimizer.Originals.Lighting.GlobalShadows or false
-    for _, v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("SunRaysEffect") or v:IsA("BlurEffect") or v:IsA("ColorCorrectionEffect") then
-            if Optimizer.Originals.Effects[v] == nil then
-                Optimizer.Originals.Effects[v] = v.Enabled
-            end
-            v.Enabled = not enable and Optimizer.Originals.Effects[v] or false
-        end
-    end
-end
-
-function Optimizer.FPSMonitor(enable)
-    if enable then
-        if not fpsGui then
-            fpsGui = Instance.new("ScreenGui")
-            fpsGui.Name = "FPSGui"
-            pcall(function() fpsGui.Parent = CoreGui end)
-            if not fpsGui.Parent then fpsGui.Parent = lp:WaitForChild("PlayerGui") end
-            
-            fpsLabel = Instance.new("TextLabel")
-            fpsLabel.Size = UDim2.new(0, 160, 0, 30)
-            fpsLabel.Position = UDim2.new(1, -170, 0, 10)
-            fpsLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-            fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
-            fpsLabel.BackgroundTransparency = 0.3
-            fpsLabel.Font = Enum.Font.SourceSansBold
-            fpsLabel.TextSize = 15
-            fpsLabel.Active = true
-            fpsLabel.Parent = fpsGui
-
-            fpsCorner = Instance.new("UICorner")
-            fpsCorner.CornerRadius = UDim.new(0, 8)
-            fpsCorner.Parent = fpsLabel
-
-            safeConnect(fpsLabel.InputBegan, function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    dragging = true
-                    dragStart = input.Position
-                    startPos = fpsLabel.Position
-
-                    safeConnect(input.Changed, function()
-                        if input.UserInputState == Enum.UserInputState.End then
-                            dragging = false
-                        end
-                    end)
-                end
-            end)
-
-            safeConnect(fpsLabel.InputChanged, function(input)
-                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                    dragInput = input
-                end
-            end)
-
-            safeConnect(UserInputService.InputChanged, function(input)
-                if input == dragInput and dragging then
-                    local delta = input.Position - dragStart
-                    fpsLabel.Position = UDim2.new(
-                        startPos.X.Scale,
-                        startPos.X.Offset + delta.X,
-                        startPos.Y.Scale,
-                        startPos.Y.Offset + delta.Y
-                    )
-                end
-            end)
-        end
-        fpsGui.Enabled = true
-        local frames, last = 0, os.clock()
-        Optimizer.Connections["FPS"] = RunService.RenderStepped:Connect(function()
-            frames = frames + 1
-            local now = os.clock()
-            if now - last >= 1 then
-                local currentFps = math.floor(frames / (now - last))
-                local ping = 0
-                pcall(function()
-                    ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-                end)
-                fpsLabel.Text = "FPS: " .. currentFps .. " | Ping: " .. ping .. "ms"
-                frames = 0
-                last = now
-            end
-        end)
-    else
-        if fpsGui then fpsGui.Enabled = false end
-        if Optimizer.Connections["FPS"] then Optimizer.Connections["FPS"]:Disconnect() end
-    end
-end
-
-function Optimizer.SmartCleanup()
-    local count = Optimizer.EffectCleaner()
-    processDescendantsChunked(Workspace, function(sound)
-        if sound:IsA("Sound") and not sound.IsPlaying then
-            sound:Destroy()
-            count = count + 1
-        end
-    end)
-    return count
-end
-
-function Optimizer.AutoOptimize(enable, targetFps)
-    Optimizer.State.TargetFPS = targetFps or 30
-    if enable then
-        local frames, last = 0, os.clock()
-        Optimizer.Connections["Auto"] = RunService.RenderStepped:Connect(function()
-            frames = frames + 1
-            local now = os.clock()
-            if now - last >= 5 then
-                local current = math.floor(frames / (now - last))
-                if current < Optimizer.State.TargetFPS then
-                    Optimizer.SmartCleanup()
-                    Optimizer.LowGraphicsMode(true)
-                    Optimizer.LightingOptimizer(true)
-                end
-                frames = 0
-                last = now
-            end
-        end)
-    else
-        if Optimizer.Connections["Auto"] then Optimizer.Connections["Auto"]:Disconnect() end
-    end
-end
-
-function Optimizer.PerformancePresets(preset)
-    preset = tostring(preset):lower()
-    if preset == "low" then
-        Optimizer.LowGraphicsMode(true)
-        Optimizer.ParticleOptimizer(true)
-        Optimizer.CharacterOptimizer(true)
-        Optimizer.DisableFog(true)
-        Optimizer.LightingOptimizer(true)
-    elseif preset == "medium" then
-        Optimizer.LowGraphicsMode(false)
-        Optimizer.ParticleOptimizer(true)
-        Optimizer.CharacterOptimizer(false)
-        Optimizer.DisableFog(true)
-        Optimizer.LightingOptimizer(true)
-    elseif preset == "high" then
-        Optimizer.RestoreSettings()
-    end
-end
-
-function Optimizer.PerformanceMode(enable)
-    if enable then
-        Optimizer.PerformancePresets("low")
-        Optimizer.SmartCleanup()
-    else
-        Optimizer.RestoreSettings()
-    end
-end
-
-function Optimizer.RestoreSettings()
-    Optimizer.LowGraphicsMode(false)
-    Optimizer.ParticleOptimizer(false)
-    Optimizer.CharacterOptimizer(false)
-    Optimizer.DisableFog(false)
-    Optimizer.LightingOptimizer(false)
-    Lighting.GlobalShadows = Optimizer.Originals.Lighting.GlobalShadows
-    Lighting.FogEnd = Optimizer.Originals.Lighting.FogEnd
-    Lighting.FogStart = Optimizer.Originals.Lighting.FogStart
-    for effect, state in pairs(Optimizer.Originals.Effects) do
-        if effect and effect.Parent then effect.Enabled = state end
-    end
-    for particle, state in pairs(Optimizer.Originals.Particles) do
-        if particle and particle.Parent then particle.Enabled = state end
-    end
-end
-
-Optimizer.PerformanceMode(true)
-Optimizer.FPSMonitor(true)
-Optimizer.AutoOptimize(true, 30)
