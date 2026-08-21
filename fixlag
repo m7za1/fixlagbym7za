@@ -16,8 +16,8 @@ local UserInputService = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 local Terrain = Workspace:FindFirstChildOfClass("Terrain")
 
-local VM = {}
-local order = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
+local hiddenTrees = {}
+local treesHidden = true
 
 local function safeConnect(sig, fn)
     pcall(function() sig:Connect(fn) end)
@@ -37,6 +37,85 @@ local function processDescendantsChunked(parent, callback, chunkSize)
     end)
 end
 
+local function getTreeRoot(v)
+    if not (v:IsA("Model") or v:IsA("BasePart")) then return nil end
+    local name = v.Name:lower()
+    if name:find("tree") or name:find("leaf") or name:find("foliage") then
+        local ancestor = v
+        while ancestor.Parent and ancestor.Parent ~= Workspace do
+            local pName = ancestor.Parent.Name:lower()
+            if pName:find("tree") or pName:find("leaf") or pName:find("foliage") then
+                ancestor = ancestor.Parent
+            else
+                break
+            end
+        end
+        return ancestor
+    end
+    return nil
+end
+
+local function processTree(v)
+    local root = getTreeRoot(v)
+    if root then
+        if not hiddenTrees[root] then
+            hiddenTrees[root] = root.Parent or Workspace
+        end
+        if treesHidden then
+            task.defer(function()
+                pcall(function() root.Parent = nil end)
+            end)
+        end
+    end
+end
+
+local function restoreTrees()
+    treesHidden = false
+    for tree, origParent in pairs(hiddenTrees) do
+        if tree then
+            task.defer(function()
+                pcall(function() tree.Parent = origParent or Workspace end)
+            end)
+        end
+    end
+end
+
+local function removeTrees()
+    treesHidden = true
+    for tree, _ in pairs(hiddenTrees) do
+        if tree then
+            task.defer(function()
+                pcall(function() tree.Parent = nil end)
+            end)
+        end
+    end
+end
+
+local function onChat(msg)
+    local clean = msg:lower()
+    if clean:find("/e add tree") or clean:find("/e addtree") then
+        restoreTrees()
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Optimizer",
+                Text = "Trees restored!",
+                Duration = 5
+            })
+        end)
+    elseif clean:find("/e remove tree") or clean:find("/e removetree") then
+        removeTrees()
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Optimizer",
+                Text = "Trees removed!",
+                Duration = 5
+            })
+        end)
+    end
+end
+
+safeConnect(lp.Chatted, onChat)
+
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification",{
         Title="made by m7za",
@@ -44,6 +123,9 @@ pcall(function()
         Duration=5
     })
 end)
+
+local VM = {}
+local order = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
 
 VM[1] = function()
     local BLACK = Color3.fromRGB(0,0,0)
@@ -79,20 +161,22 @@ VM[1] = function()
 end
 
 VM[2] = function()
-    local SkyIDs={
-        Bk=92959017845968,Ft=129304841254693,Lf=129249062260004,
-        Rt=117319232583147,Up=121193772599100,Dn=115022734343595
-    }
+    local greySkyID = "rbxassetid://7143929431"
 
     for _,v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("Sky") then v:Destroy() end
+        if v:IsA("Sky") then
+            task.defer(function() pcall(function() v:Destroy() end) end)
+        end
     end
 
-    local s=Instance.new("Sky")
-    for k,id in pairs(SkyIDs) do
-        s["Skybox"..k]="rbxassetid://"..id
-    end
-    s.Parent=Lighting
+    local s = Instance.new("Sky")
+    s.SkyboxBk = greySkyID
+    s.SkyboxFt = greySkyID
+    s.SkyboxLf = greySkyID
+    s.SkyboxRt = greySkyID
+    s.SkyboxUp = greySkyID
+    s.SkyboxDn = greySkyID
+    s.Parent = Lighting
 end
 
 VM[3] = function()
@@ -111,21 +195,21 @@ end
 
 VM[4] = function()
     safeConnect(Workspace.DescendantAdded, function(v)
-        if v:IsA("Smoke") then
-            v:Destroy()
-        elseif v:IsA("ParticleEmitter") then
-            local m = v:FindFirstAncestorOfClass("Model")
-            if not (m and m:FindFirstChild("Class") and m.Class.Value == "Hero Hunter") then
-                v:Destroy()
+        task.defer(function()
+            if not v or not v.Parent then return end
+            if v:IsA("Smoke") then
+                pcall(function() v:Destroy() end)
+            elseif v:IsA("ParticleEmitter") then
+                local m = v:FindFirstAncestorOfClass("Model")
+                if not (m and m:FindFirstChild("Class") and m.Class.Value == "Hero Hunter") then
+                    pcall(function() v:Destroy() end)
+                end
+            elseif getTreeRoot(v) then
+                processTree(v)
+            elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") then
+                pcall(function() v:Destroy() end)
             end
-        elseif v:IsA("Model") or v:IsA("BasePart") then
-            local name = v.Name:lower()
-            if name:find("tree") or name:find("leaf") or name:find("foliage") then
-                v:Destroy()
-            end
-        elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") then
-            v:Destroy()
-        end
+        end)
     end)
 end
 
@@ -173,19 +257,14 @@ end
 
 VM[7] = function()
     processDescendantsChunked(Workspace, function(v)
-        if v:IsA("Model") or v:IsA("BasePart") then
-            local name = v.Name:lower()
-            if name:find("tree") or name:find("leaf") or name:find("foliage") then
-                v:Destroy()
-            end
-        end
+        processTree(v)
     end)
 end
 
 VM[8] = function()
     processDescendantsChunked(Workspace, function(v)
         if v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") then
-            v:Destroy()
+            task.defer(function() pcall(function() v:Destroy() end) end)
         end
     end)
 end
