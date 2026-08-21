@@ -158,7 +158,7 @@ VM[1] = function()
 end
 
 VM[2] = function()
-    local greySkyID = "rbxassetid://7143929431"
+    local greySkyID = "rbxassetid://77236637068486"
 
     for _,v in ipairs(Lighting:GetChildren()) do
         if v:IsA("Sky") then
