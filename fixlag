@@ -159,21 +159,44 @@ end
 
 VM[2] = function()
     local greySkyID = "rbxassetid://77236637068486"
+    local customSky = nil
 
-    for _,v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("Sky") then
-            task.defer(function() pcall(function() v:Destroy() end) end)
+    local function applySky()
+        for _, v in ipairs(Lighting:GetChildren()) do
+            if v:IsA("Sky") and v ~= customSky then
+                task.defer(function() pcall(function() v:Destroy() end) end)
+            end
+        end
+
+        if not customSky or customSky.Parent ~= Lighting then
+            if customSky then pcall(function() customSky:Destroy() end) end
+            customSky = Instance.new("Sky")
+            customSky.Name = "CustomGreySky"
+            customSky.SkyboxBk = greySkyID
+            customSky.SkyboxFt = greySkyID
+            customSky.SkyboxLf = greySkyID
+            customSky.SkyboxRt = greySkyID
+            customSky.SkyboxUp = greySkyID
+            customSky.SkyboxDn = greySkyID
+            customSky.SunAngularSize = 0
+            customSky.MoonAngularSize = 0
+            customSky.Parent = Lighting
         end
     end
 
-    local s = Instance.new("Sky")
-    s.SkyboxBk = greySkyID
-    s.SkyboxFt = greySkyID
-    s.SkyboxLf = greySkyID
-    s.SkyboxRt = greySkyID
-    s.SkyboxUp = greySkyID
-    s.SkyboxDn = greySkyID
-    s.Parent = Lighting
+    applySky()
+
+    safeConnect(Lighting.ChildAdded, function(v)
+        if v:IsA("Sky") and v ~= customSky then
+            task.wait()
+            applySky()
+        end
+    end)
+
+    safeConnect(lp.CharacterAdded, function()
+        task.wait(0.2)
+        applySky()
+    end)
 end
 
 VM[3] = function()
@@ -223,7 +246,7 @@ end
 VM[6] = function()
     local function killSun()
         local sky = Lighting:FindFirstChildOfClass("Sky")
-        if sky then
+        if sky and sky.Name ~= "CustomGreySky" then
             sky.SunAngularSize = 0
             sky.SunTextureId = ""
             sky.MoonAngularSize = 0
