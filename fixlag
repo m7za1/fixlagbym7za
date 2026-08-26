@@ -1,7 +1,7 @@
 
 ------------------------------------------
 -- Made By m7za ( My Discord is m7za1 ) --
-----------------------------------------
+------------------------------------------
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
