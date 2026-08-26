@@ -13,7 +13,7 @@ end
 
 local games = {
     [10449761463] = "https://raw.githubusercontent.com/m7za1/fixlagbym7za/refs/heads/main/TheStrongestBattleGrounds",
-    [14282329180] = "https://raw.githubusercontent.com/m7za1/fixlagbym7za/refs/heads/main/LegendsBattleGround"
+    [15269951959] = "https://raw.githubusercontent.com/m7za1/fixlagbym7za/refs/heads/main/LegendsBattleGround"
 }
 
 if games[placeId] then
