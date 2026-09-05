@@ -9439,81 +9439,27 @@ VM[10] = function()
 end
 
 VM[11] = function()
+    local playerGui = lp:WaitForChild("PlayerGui")
+
+    local oldGui = playerGui:FindFirstChild("FPSPingCounter")
+    if oldGui then oldGui:Destroy() end
+
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "FPSPingCounter"
     screenGui.ResetOnSpawn = false
-    pcall(function() screenGui.Parent = CoreGui end)
-    if not screenGui.Parent then screenGui.Parent = lp:WaitForChild("PlayerGui") end
+    screenGui.Parent = playerGui
 
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 130, 0, 30)
-    mainFrame.Position = UDim2.new(0.8, 0, 0, 50)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    mainFrame.BackgroundTransparency = 0.7
-    mainFrame.BorderSizePixel = 1
-    mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
-    mainFrame.Parent = screenGui
-    mainFrame.Active = true
-    mainFrame.ClipsDescendants = true
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = mainFrame
-
-    local fpsLabel = Instance.new("TextLabel")
-    fpsLabel.Size = UDim2.new(0.5, -5, 1, -10)
-    fpsLabel.Position = UDim2.new(0, 5, 0, 5)
-    fpsLabel.BackgroundTransparency = 1
-    fpsLabel.Text = "FPS: 0"
-    fpsLabel.TextColor3 = Color3.new(1, 1, 1)
-    fpsLabel.Font = Enum.Font.Code
-    fpsLabel.TextSize = 15
-    fpsLabel.TextXAlignment = Enum.TextXAlignment.Left
-    fpsLabel.Parent = mainFrame
-
-    local pingLabel = Instance.new("TextLabel")
-    pingLabel.Size = UDim2.new(0.5, -5, 1, -10)
-    pingLabel.Position = UDim2.new(0.5, 5, 0, 5)
-    pingLabel.BackgroundTransparency = 1
-    pingLabel.Text = "PING: 0"
-    pingLabel.TextColor3 = Color3.new(1, 1, 1)
-    pingLabel.Font = Enum.Font.Code
-    pingLabel.TextSize = 15
-    pingLabel.TextXAlignment = Enum.TextXAlignment.Right
-    pingLabel.Parent = mainFrame
-
-    local dragging = false
-    local dragInput, mousePos, framePos
-
-    local function updateDrag(input)
-        local delta = input.Position - mousePos
-        mainFrame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
-    end
-
-    safeConnect(mainFrame.InputBegan, function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            mousePos = input.Position
-            framePos = mainFrame.Position
-            safeConnect(input.Changed, function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    safeConnect(mainFrame.InputChanged, function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
-    safeConnect(UserInputService.InputChanged, function(input)
-        if input == dragInput and dragging then
-            updateDrag(input)
-        end
-    end)
+    local counterLabel = Instance.new("TextLabel")
+    counterLabel.Size = UDim2.new(0, 300, 0, 30)
+    counterLabel.Position = UDim2.new(0.5, 0, 0, 10)
+    counterLabel.AnchorPoint = Vector2.new(0.5, 0)
+    counterLabel.BackgroundTransparency = 1
+    counterLabel.Text = "FPS: 0 | PING: 0 ms"
+    counterLabel.Font = Enum.Font.Code
+    counterLabel.TextSize = 16
+    counterLabel.TextStrokeTransparency = 0.4
+    counterLabel.TextXAlignment = Enum.TextXAlignment.Center
+    counterLabel.Parent = screenGui
 
     local displayedFPS = 0
     local displayedPing = 0
@@ -9523,7 +9469,7 @@ VM[11] = function()
         local currentTime = tick()
         local fps = 1 / math.max(currentTime - lastTime, 0.0001)
         lastTime = currentTime
-        
+
         local ping = 0
         pcall(function()
             ping = lp:GetNetworkPing() * 1000
@@ -9532,24 +9478,10 @@ VM[11] = function()
         displayedFPS = displayedFPS + (fps - displayedFPS) * 0.1
         displayedPing = displayedPing + (ping - displayedPing) * 0.1
 
-        fpsLabel.Text = string.format("FPS: %d", math.floor(displayedFPS))
-        pingLabel.Text = string.format("PING: %d", math.floor(displayedPing))
+        counterLabel.Text = string.format("FPS: %d | PING: %d ms", math.floor(displayedFPS), math.floor(displayedPing))
 
-        if displayedFPS <= 25 then
-            fpsLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-        elseif displayedFPS <= 40 then
-            fpsLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-        else
-            fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        end
-
-        if displayedPing <= 150 then
-            pingLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        elseif displayedPing <= 250 then
-            pingLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-        else
-            pingLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-        end
+        local hue = (currentTime * 0.4) % 1
+        counterLabel.TextColor3 = Color3.fromHSV(hue, 0.8, 1)
     end)
 end
 
