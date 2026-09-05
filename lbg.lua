@@ -9723,7 +9723,6 @@
 
 
 
-
 -- if you there to skid then go fuck yourself --
 
 local Players = game:GetService("Players")
@@ -9961,7 +9960,7 @@ VM[9] = function()
     counterLabel.Position = UDim2.new(0.5, 0, 0, 10)
     counterLabel.AnchorPoint = Vector2.new(0.5, 0)
     counterLabel.BackgroundTransparency = 1
-    counterLabel.Text = "FPS: 0  |  PING: 0 ms"
+    counterLabel.Text = "FPS: 0 | PING: 0 ms"
     counterLabel.Font = Enum.Font.Code
     counterLabel.TextSize = 16
     counterLabel.TextStrokeTransparency = 0.4
@@ -9981,7 +9980,7 @@ VM[9] = function()
         displayedFPS = displayedFPS + (fps - displayedFPS) * 0.1
         displayedPing = displayedPing + (ping - displayedPing) * 0.1
 
-        counterLabel.Text = string.format("FPS: %d  |  PING: %d ms", math.floor(displayedFPS), math.floor(displayedPing))
+        counterLabel.Text = string.format("FPS: %d | PING: %d ms", math.floor(displayedFPS), math.floor(displayedPing))
 
         local hue = (currentTime * 0.4) % 1
         counterLabel.TextColor3 = Color3.fromHSV(hue, 0.8, 1)
