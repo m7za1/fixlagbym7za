@@ -9983,8 +9983,8 @@ local function notify(title, text)
 end
 
 local games = {
-    [10449761463] = "https://raw.githubusercontent.com/m7za1/fixlagbym7za/refs/heads/main/TheStrongestBattleGrounds",
-    [15269951959] = "https://raw.githubusercontent.com/m7za1/fixlagbym7za/refs/heads/main/LegendsBattleGround"
+    [10449761463] = "https://raw.githubusercontent.com/m7za1/fixlagbym7za/refs/heads/main/lbg.lua",
+    [15269951959] = "https://raw.githubusercontent.com/m7za1/fixlagbym7za/refs/heads/main/tsbg.lua"
 }
 
 if games[placeId] then
