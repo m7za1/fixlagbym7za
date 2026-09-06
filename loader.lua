@@ -1,8 +1,5 @@
 -- if you there to skid go fuck yourself --
 
-
-
-
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
 local placeId = game.PlaceId
@@ -56,16 +53,14 @@ if not fetchOk then
     return
 end
 
-local compileOk, compiledOrErr = pcall(function()
-    return loadstring(fetchResultOrErr)
-end)
+local compiledFn, compileErr = loadstring(fetchResultOrErr)
 
-if not compileOk or not compiledOrErr then
-    notify("ERROR", "The script failed to compile: " .. tostring(compiledOrErr))
+if not compiledFn then
+    notify("ERROR", "The script failed to compile: " .. tostring(compileErr))
     return
 end
 
-local runOk, runErr = pcall(compiledOrErr)
+local runOk, runErr = pcall(compiledFn)
 
 if not runOk then
     notify("ERROR", "The script errored while running: " .. tostring(runErr))
