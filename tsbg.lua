@@ -1,20 +1,36 @@
 -- if you there to skid then go fuck yourself --
 
-local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
+local Players         = game:GetService("Players")
+local Lighting        = game:GetService("Lighting")
+local Workspace       = game:GetService("Workspace")
+local RunService      = game:GetService("RunService")
+local StarterGui      = game:GetService("StarterGui")
+local TextChatService = game:GetService("TextChatService")
 
-local lp = Players.LocalPlayer
+local lp      = Players.LocalPlayer
 local Terrain = Workspace:FindFirstChildOfClass("Terrain")
 
-local hiddenTrees = {}
-local treesHidden = true
+do
+    local env = (typeof(getgenv) == "function" and getgenv()) or _G
+    if env.TSBG_Loaded then
+        return
+    end
+    env.TSBG_Loaded = true
+end
+
+local function notify(title, text, duration)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = duration or 5,
+        })
+    end)
+end
 
 local function safeConnect(sig, fn)
-    pcall(function() sig:Connect(fn) end)
+    local ok, conn = pcall(function() return sig:Connect(fn) end)
+    if ok then return conn end
 end
 
 local function processDescendantsChunked(parent, callback, chunkSize)
@@ -30,6 +46,9 @@ local function processDescendantsChunked(parent, callback, chunkSize)
         end
     end)
 end
+
+local hiddenTrees  = {}
+local treesHidden  = true
 
 local function getTreeRoot(v)
     if not (v:IsA("Model") or v:IsA("BasePart")) then return nil end
@@ -76,7 +95,7 @@ end
 
 local function removeTrees()
     treesHidden = true
-    for tree, _ in pairs(hiddenTrees) do
+    for tree in pairs(hiddenTrees) do
         if tree then
             task.defer(function()
                 pcall(function() tree.Parent = nil end)
@@ -86,43 +105,36 @@ local function removeTrees()
 end
 
 local function onChat(msg)
+    if typeof(msg) ~= "string" then return end
     local clean = msg:lower()
     if clean:find("/e add tree") or clean:find("/e addtree") then
         restoreTrees()
-        pcall(function()
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Optimizer",
-                Text = "Trees restored!",
-                Duration = 5
-            })
-        end)
+        notify("Optimizer", "Trees restored!")
     elseif clean:find("/e remove tree") or clean:find("/e removetree") then
         removeTrees()
-        pcall(function()
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Optimizer",
-                Text = "Trees removed!",
-                Duration = 5
-            })
-        end)
+        notify("Optimizer", "Trees removed!")
     end
 end
 
 safeConnect(lp.Chatted, onChat)
 
 pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification",{
-        Title="made by m7za",
-        Text="my discord m7za1",
-        Duration=5
-    })
+    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        safeConnect(TextChatService.MessageReceived, function(textChatMessage)
+            if textChatMessage.TextSource and textChatMessage.TextSource.UserId == lp.UserId then
+                onChat(textChatMessage.Text)
+            end
+        end)
+    end
 end)
+
+notify("made by m7za", "my discord m7za1")
 
 local VM = {}
 local order = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
 
 VM[1] = function()
-    local BLACK = Color3.fromRGB(0,0,0)
+    local BLACK = Color3.fromRGB(0, 0, 0)
 
     local function apply(v)
         if v:IsA("Trail") then
@@ -155,7 +167,7 @@ VM[1] = function()
 end
 
 VM[2] = function()
-    local greySkyID = "rbxassetid://77236637068486"
+    local GREY_SKY_ID = "rbxassetid://77236637068486"
     local customSky = nil
 
     local function applySky()
@@ -169,12 +181,12 @@ VM[2] = function()
             if customSky then pcall(function() customSky:Destroy() end) end
             customSky = Instance.new("Sky")
             customSky.Name = "CustomGreySky"
-            customSky.SkyboxBk = greySkyID
-            customSky.SkyboxFt = greySkyID
-            customSky.SkyboxLf = greySkyID
-            customSky.SkyboxRt = greySkyID
-            customSky.SkyboxUp = greySkyID
-            customSky.SkyboxDn = greySkyID
+            customSky.SkyboxBk = GREY_SKY_ID
+            customSky.SkyboxFt = GREY_SKY_ID
+            customSky.SkyboxLf = GREY_SKY_ID
+            customSky.SkyboxRt = GREY_SKY_ID
+            customSky.SkyboxUp = GREY_SKY_ID
+            customSky.SkyboxDn = GREY_SKY_ID
             customSky.SunAngularSize = 0
             customSky.MoonAngularSize = 0
             customSky.Parent = Lighting
@@ -197,15 +209,15 @@ VM[2] = function()
 end
 
 VM[3] = function()
-    Lighting.ClockTime=12
-    Lighting.GlobalShadows=false
-    Lighting.Brightness=0.8
-    Lighting.ExposureCompensation=-0.2
-    Lighting.FogStart,Lighting.FogEnd=9e9,9e9
+    Lighting.ClockTime = 12
+    Lighting.GlobalShadows = false
+    Lighting.Brightness = 0.8
+    Lighting.ExposureCompensation = -0.2
+    Lighting.FogStart, Lighting.FogEnd = 9e9, 9e9
 
-    for _,v in ipairs(Lighting:GetChildren()) do
+    for _, v in ipairs(Lighting:GetChildren()) do
         if v:IsA("PostEffect") or v:IsA("SunRaysEffect") then
-            v.Enabled=false
+            v.Enabled = false
         end
     end
 end
@@ -213,30 +225,34 @@ end
 VM[4] = function()
     safeConnect(Workspace.DescendantAdded, function(v)
         task.defer(function()
-            if not v or not v.Parent then return end
-            if v:IsA("Smoke") then
-                pcall(function() v:Destroy() end)
-            elseif v:IsA("ParticleEmitter") then
-                local m = v:FindFirstAncestorOfClass("Model")
-                if not (m and m:FindFirstChild("Class") and m.Class.Value == "Hero Hunter") then
-                    pcall(function() v:Destroy() end)
+            pcall(function()
+                if not v or not v.Parent then return end
+                if v:IsA("Smoke") then
+                    v:Destroy()
+                elseif v:IsA("ParticleEmitter") then
+                    local m = v:FindFirstAncestorOfClass("Model")
+                    local classObj = m and m:FindFirstChild("Class")
+                    local isHeroHunter = classObj and classObj:IsA("ValueBase") and classObj.Value == "Hero Hunter"
+                    if not isHeroHunter then
+                        v:Destroy()
+                    end
+                elseif getTreeRoot(v) then
+                    processTree(v)
+                elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") then
+                    v:Destroy()
                 end
-            elseif getTreeRoot(v) then
-                processTree(v)
-            elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") then
-                pcall(function() v:Destroy() end)
-            end
+            end)
         end)
     end)
 end
 
 VM[5] = function()
     if not Terrain then return end
-    for _,v in ipairs(Terrain:GetChildren()) do
-        if v:IsA("Clouds") then v.Enabled=false end
+    for _, v in ipairs(Terrain:GetChildren()) do
+        if v:IsA("Clouds") then v.Enabled = false end
     end
-    safeConnect(Terrain.ChildAdded,function(v)
-        if v:IsA("Clouds") then v.Enabled=false end
+    safeConnect(Terrain.ChildAdded, function(v)
+        if v:IsA("Clouds") then v.Enabled = false end
     end)
 end
 
@@ -260,7 +276,7 @@ VM[6] = function()
         at.Glare = 0
     end
 
-    safeConnect(Lighting.ChildAdded,function(v)
+    safeConnect(Lighting.ChildAdded, function(v)
         if v:IsA("Sky") then
             task.wait()
             killSun()
@@ -295,14 +311,28 @@ VM[9] = function()
 end
 
 VM[10] = function()
-    local cam = Workspace.CurrentCamera
-    if cam then
-        safeConnect(cam:GetPropertyChangedSignal("FieldOfView"), function()
-            if cam.FieldOfView > 80 or cam.FieldOfView < 60 then
-                cam.FieldOfView = 70
-            end
+    local MIN_FOV, MAX_FOV, DEFAULT_FOV = 60, 80, 70
+    local camConn = nil
+
+    local function clampFOV(cam)
+        if cam.FieldOfView > MAX_FOV or cam.FieldOfView < MIN_FOV then
+            cam.FieldOfView = DEFAULT_FOV
+        end
+    end
+
+    local function watch(cam)
+        if camConn then camConn:Disconnect() end
+        if not cam then return end
+        clampFOV(cam)
+        camConn = safeConnect(cam:GetPropertyChangedSignal("FieldOfView"), function()
+            clampFOV(cam)
         end)
     end
+
+    watch(Workspace.CurrentCamera)
+    safeConnect(Workspace:GetPropertyChangedSignal("CurrentCamera"), function()
+        watch(Workspace.CurrentCamera)
+    end)
 end
 
 VM[11] = function()
@@ -332,7 +362,7 @@ VM[11] = function()
     local displayedPing = 0
     local lastTime = tick()
 
-    RunService.RenderStepped:Connect(function()
+    safeConnect(RunService.RenderStepped, function()
         local currentTime = tick()
         local fps = 1 / math.max(currentTime - lastTime, 0.0001)
         lastTime = currentTime
@@ -345,7 +375,11 @@ VM[11] = function()
         displayedFPS = displayedFPS + (fps - displayedFPS) * 0.1
         displayedPing = displayedPing + (ping - displayedPing) * 0.1
 
-        counterLabel.Text = string.format("FPS: %d | PING: %d ms", math.floor(displayedFPS), math.floor(displayedPing))
+        counterLabel.Text = string.format(
+            "FPS: %d | PING: %d ms",
+            math.floor(displayedFPS),
+            math.floor(displayedPing)
+        )
 
         local hue = (currentTime * 0.4) % 1
         counterLabel.TextColor3 = Color3.fromHSV(hue, 0.8, 1)
@@ -360,4 +394,4 @@ end
 
 pcall(function()
     settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-end) 
+end)
