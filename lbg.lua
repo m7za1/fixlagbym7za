@@ -1,8 +1,5 @@
 --if you there to skid go fuck yourself --
 
-
-
-
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
@@ -244,23 +241,19 @@ VM[8] = function()
     if not setOk then return end
 
     meta.__index = newcclosure(function(obj, key)
-        local handled, result = pcall(function()
-            if key == "CamShakeCF" and obj == _G then
-                return true, CFrame.new()
-            end
-
-            if key == "CameraOffset" and typeof(obj) == "Instance" and obj:IsA("Humanoid") then
-                return true, Vector3.new(0, 0, 0)
-            end
-
-            return false
-        end)
-
-        if handled and result then
-            return result
+        if key == "CamShakeCF" and obj == _G then
+            return CFrame.new()
         end
 
-        return old(obj, key)
+        if key == "CameraOffset" and typeof(obj) == "Instance" and obj:IsA("Humanoid") then
+            return Vector3.new(0, 0, 0)
+        end
+
+        if typeof(old) == "function" then
+            return old(obj, key)
+        elseif typeof(old) == "table" then
+            return old[key]
+        end
     end)
 
     pcall(setreadonly, meta, true)
