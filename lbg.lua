@@ -245,20 +245,19 @@ VM[8] = function()
             return CFrame.new()
         end
 
-        if key == "CameraOffset" and typeof(obj) == "Instance" and obj:IsA("Humanoid") then
+        if typeof(obj) == "Instance" and obj:IsA("Humanoid") and key == "CameraOffset" then
             return Vector3.new(0, 0, 0)
         end
 
-        if typeof(old) == "function" then
-            return old(obj, key)
-        elseif typeof(old) == "table" then
-            return old[key]
-        end
+        return old(obj, key)
     end)
 
     pcall(setreadonly, meta, true)
 
     safeConnect(RunService.Heartbeat, function()
+        rawset(_G, "CamShakeCF", CFrame.new())
+    end)
+    safeConnect(RunService.RenderStepped, function()
         rawset(_G, "CamShakeCF", CFrame.new())
     end)
 end
